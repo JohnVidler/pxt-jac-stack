@@ -21,6 +21,8 @@ namespace pxt_jac_stack {
     let _uartTx = SerialPin.P1;
     let _uartRx = SerialPin.P0;
 
+    let _updateHandler: () => void = () => {};
+
     let location = {
         datetime: {
             hour: 0,
@@ -39,6 +41,12 @@ namespace pxt_jac_stack {
         satellites: 0
     }
 
+    //% block="on gps location update"
+    //% group="GPS Location"
+    export function onLocationUpdate( handler: () => void ): void {
+        _updateHandler = handler;
+    }
+
     //% block="set jac:stack serial pins to $tx and $rx"
     //% advanced=true
     export function setSerialPins( tx: SerialPin = SerialPin.P1, rx: SerialPin = SerialPin.P0 ): void {
@@ -47,7 +55,7 @@ namespace pxt_jac_stack {
     }
 
     //% block="enable tracking $automatic"
-    //% group="control"
+    //% group="Control"
     export function setAutoUpdates( automatic: boolean = true ): void {
         if( automatic ) {
             serial.redirect(_uartTx, _uartRx, _uartBaud);
@@ -63,44 +71,86 @@ namespace pxt_jac_stack {
 
     //% block="latitude"
     //% group="GPS Location"
-    function getLatitude(): number {
+    export function getLatitude(): number {
         return location.latitude;
     }
 
     //% block="longitude"
     //% group="GPS Location"
-    function getLongitude(): number {
+    export function getLongitude(): number {
         return location.longitude;
     }
 
     //% block="altitude"
     //% group="GPS Location"
-    function getAltitude(): number {
+    export function getAltitude(): number {
         return location.altitude;
     }
 
     //% block="ground speed"
     //% group="GPS Movement"
-    function getGroundSpeed(): number {
+    export function getGroundSpeed(): number {
         return location.speedOverGround;
     }
 
     //% block="ground direction"
     //% group="GPS Movement"
-    function getCourse(): number {
+    export function getCourse(): number {
         return location.courseOverGround;
     }
 
     //% block="satellites"
-    //% group="GPS Statistics"
-    function getSatellites(): number {
+    //% group="GPS Info"
+    export function getSatellites(): number {
         return location.satellites;
     }
 
-    //% block="satellites"
-    //% group="GPS Statistics"
-    function getFix(): LocationFixType {
+    //% block="location fix status"
+    //% group="GPS Info"
+    export function getFix(): LocationFixType {
         return location.fixType;
+    }
+
+    //% block="fix status"
+    //% group="GPS Info"
+    export function getFixProxy( t: LocationFixType = LocationFixType.NONE ): LocationFixType {
+        return t;
+    }
+
+    //% block="hour"
+    //% group="GPS Time and Date"
+    export function getHour(): number {
+        return location.datetime.hour;
+    }
+
+    //% block="minute"
+    //% group="GPS Time and Date"
+    export function getMinute(): number {
+        return location.datetime.minute;
+    }
+
+    //% block="second"
+    //% group="GPS Time and Date"
+    export function getSecond(): number {
+        return location.datetime.second;
+    }
+
+    //% block="day"
+    //% group="GPS Time and Date"
+    export function getDay(): number {
+        return location.datetime.day;
+    }
+
+    //% block="month"
+    //% group="GPS Time and Date"
+    export function getMonth(): number {
+        return location.datetime.month;
+    }
+
+    //% block="year"
+    //% group="GPS Time and Date"
+    export function getYear(): number {
+        return location.datetime.year;
     }
 
     control.runInBackground(() => {
@@ -121,9 +171,9 @@ namespace pxt_jac_stack {
         let msg = input.split(",");
 
         switch (msg[0]) {
-            case "$GPGGA": parseGPGGA(msg); break;
+            case "$GPGGA": parseGPGGA(msg); _updateHandler(); break;
             case "$GPGSA": location.fixType = parseInt(msg[2]); break;
-            case "$GPRMC": parseGPRMC(msg); break;
+            case "$GPRMC": parseGPRMC(msg); _updateHandler(); break;
             default:
                 // Skip
         }
