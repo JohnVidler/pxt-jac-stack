@@ -22,6 +22,7 @@ namespace pxt_jac_stack {
     let _uartRx = SerialPin.P0;
 
     let _updateHandler: () => void = () => {};
+    let _nmeaDataHandler: (x:string) => void = () => {};
 
     let location = {
         datetime: {
@@ -45,6 +46,14 @@ namespace pxt_jac_stack {
     //% group="GPS Location"
     export function onLocationUpdate( handler: () => void ): void {
         _updateHandler = handler;
+    }
+
+    //% block="on NMEA data $data"
+    //% group="Debugging"
+    //% draggableParameters="reporter"
+    //% advanced="true"
+    export function onNMEAUpdate(handler: (data:string) => void): void {
+        _nmeaDataHandler = handler;
     }
 
     //% block="set jac:stack serial pins to $tx and $rx"
@@ -105,16 +114,34 @@ namespace pxt_jac_stack {
         return location.satellites;
     }
 
-    //% block="location fix status"
+    //% block="gps status"
     //% group="GPS Info"
     export function getFix(): LocationFixType {
         return location.fixType;
     }
 
-    //% block="fix status"
+    //% block="$t"
     //% group="GPS Info"
     export function getFixProxy( t: LocationFixType = LocationFixType.NONE ): LocationFixType {
         return t;
+    }
+
+    //% block="$v as long float number, to $precision decimal places"
+    //% advanced="true"
+    export function toLongFloatString( v: number, precision: number = 8 ): string {
+        let buffer = `${Math.floor(v)}.`
+        let remainder = v - Math.floor(v);
+        for( let i=0; i<precision; i++ ) {
+            buffer += `${Math.floor(remainder * 10)}`;
+            remainder = (remainder * 10) - Math.floor(remainder * 10);
+        }
+        return buffer;
+    }
+
+    //% block="has gps fix"
+    //% group="GPS Info"
+    export function hasFix(): boolean {
+        return location.fixType > LocationFixType.NONE;
     }
 
     //% block="hour"
@@ -155,19 +182,25 @@ namespace pxt_jac_stack {
 
     control.runInBackground(() => {
         while (true) {
-            if (_monitorEnable) {
-                let readline = serial.readLine()
-                if (readline.length > 0)
-                    parseNMEA(readline);
+            try {
+                if (_monitorEnable) {
+                    let readline = serial.readLine()
+                    if (readline.length > 0)
+                        parseNMEA(readline);
 
-                pause(5);
+                    pause(25);
+                }
+                else
+                    pause(200);
+            } catch ( err ) {
+                // Eat the error
             }
-            else
-                pause(200);
         }
     });
 
     function parseNMEA(input: string): void {
+        _nmeaDataHandler( input );
+        
         let msg = input.split(",");
 
         switch (msg[0]) {
