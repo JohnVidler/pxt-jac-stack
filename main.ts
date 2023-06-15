@@ -182,19 +182,17 @@ namespace pxt_jac_stack {
 
     control.runInBackground(() => {
         while (true) {
-            try {
-                if (_monitorEnable) {
+            if (_monitorEnable) {
+                try {
                     let readline = serial.readLine()
                     if (readline.length > 0)
                         parseNMEA(readline);
-
-                    pause(25);
+                } catch (err) {
+                    // Eat the error
+                    pause(1000);
                 }
-                else
-                    pause(200);
-            } catch ( err ) {
-                // Eat the error
             }
+            pause(25);
         }
     });
 
