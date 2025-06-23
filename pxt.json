@@ -5,7 +5,8 @@
     "dependencies": {
         "core": "*",
         "radio": "*",
-        "microphone": "*"
+        "microphone": "*",
+        "pxt-edge-serial": "github:johnvidler/pxt-edge-serial#v1.2.0"
     },
     "files": [
         "README.md",
@@ -16,7 +17,7 @@
     ],
     "public": true,
     "targetVersions": {
-        "target": "5.0.12",
+        "target": "7.0.61",
         "targetId": "microbit"
     },
     "supportedTargets": [

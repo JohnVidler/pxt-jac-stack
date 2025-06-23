@@ -18,11 +18,42 @@ namespace pxt_jac_stack {
 
     let _monitorEnable = false;
     let _uartBaud = 9600;
-    let _uartTx = SerialPin.P1;
-    let _uartRx = SerialPin.P0;
+    let _uartTx = EdgeSerialPin.P1;
+    let _uartRx = EdgeSerialPin.P0;
 
     let _updateHandler: () => void = () => {};
     let _nmeaDataHandler: (x:string) => void = () => {};
+
+    // Set the default JacStack pins
+    edgeserial.redirect(_uartTx, _uartRx, _uartBaud );
+    edgeserial.setRxBufferSize( 128 );
+
+    edgeserial.onDataReceived(String.fromCharCode(Delimiters.NewLine), () => {
+        try {
+            let readline = edgeserial.readLine();
+            if (readline.length > 0)
+                parseNMEA(readline);
+        } catch (err) {
+            // Ignore any transient read errors
+        }
+    } );
+
+    /*control.runInBackground(() => {
+        while (true) {
+            //if (_monitorEnable) {
+            try {
+                //let readline = serial.readLine()
+                let readline = edgeserial.readLine()
+                if (readline.length > 0)
+                    parseNMEA(readline);
+            } catch (err) {
+                // Eat the error
+                pause(1000);
+            }
+            //}
+            pause(25);
+        }
+    });*/
 
     let location = {
         datetime: {
@@ -58,14 +89,15 @@ namespace pxt_jac_stack {
 
     //% block="set jac:stack serial pins to $tx and $rx"
     //% advanced=true
-    export function setSerialPins( tx: SerialPin = SerialPin.P1, rx: SerialPin = SerialPin.P0 ): void {
+    export function setSerialPins(tx: EdgeSerialPin = EdgeSerialPin.P1, rx: EdgeSerialPin = EdgeSerialPin.P0 ): void {
         _uartTx = tx;
         _uartRx = rx;
+        edgeserial.redirect(_uartTx, _uartRx, _uartBaud)
     }
 
     //% block="enable tracking $automatic"
     //% group="Control"
-    export function setAutoUpdates( automatic: boolean = true ): void {
+    /*export function setAutoUpdates( automatic: boolean = true ): void {
         if( automatic ) {
             serial.redirect(_uartTx, _uartRx, _uartBaud);
             serial.setRxBufferSize( 128 );
@@ -76,7 +108,7 @@ namespace pxt_jac_stack {
         serial.redirectToUSB();
         serial.setBaudRate(115200);
         _monitorEnable = false;
-    }
+    }*/
 
     //% block="latitude"
     //% group="GPS Location"
@@ -180,31 +212,27 @@ namespace pxt_jac_stack {
         return location.datetime.year;
     }
 
-    control.runInBackground(() => {
-        while (true) {
-            if (_monitorEnable) {
-                try {
-                    let readline = serial.readLine()
-                    if (readline.length > 0)
-                        parseNMEA(readline);
-                } catch (err) {
-                    // Eat the error
-                    pause(1000);
-                }
-            }
-            pause(25);
-        }
-    });
-
     function parseNMEA(input: string): void {
         _nmeaDataHandler( input );
-        
         let msg = input.split(",");
-
         switch (msg[0]) {
-            case "$GPGGA": parseGPGGA(msg); _updateHandler(); break;
-            case "$GPGSA": location.fixType = parseInt(msg[2]); break;
-            case "$GPRMC": parseGPRMC(msg); _updateHandler(); break;
+            case "$GPGGA":
+            case "$GNGGA":
+                parseGPGGA(msg);
+                _updateHandler();
+                break;
+            
+            case "$GPGSA":
+            case "$GNGSA":
+                location.fixType = parseInt(msg[2]);
+                break;
+
+            case "$GPRMC":
+            case "$GNRMC":
+                parseGPRMC(msg);
+                _updateHandler();
+                break;
+            
             default:
                 // Skip
         }
@@ -240,12 +268,15 @@ namespace pxt_jac_stack {
 
         location.latitude = computeLatitude(msg[2], msg[3]);
         location.longitude = computeLongitude(msg[4], msg[5]);
+        location.altitude = parseFloat(msg[9]);
 
         // Catch NaN's so we don't blow up folks code later...
         if (location.latitude == NaN)
             location.latitude = 0;
         if (location.longitude == NaN)
             location.longitude = 0;
+        if (location.altitude == NaN)
+            location.altitude = 0;
 
         location.satellites = parseInt(msg[7]);
     }
