@@ -6,7 +6,7 @@
         "core": "*",
         "radio": "*",
         "microphone": "*",
-        "pxt-edge-serial": "github:johnvidler/pxt-edge-serial#v1.2.0"
+        "pxt-edge-serial": "github:johnvidler/pxt-edge-serial#v1.2.1"
     },
     "files": [
         "README.md",

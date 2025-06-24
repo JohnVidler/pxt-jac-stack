@@ -16,7 +16,6 @@ enum LocationFixType {
 //% color="#a0b4d2"
 namespace pxt_jac_stack {
 
-    let _monitorEnable = false;
     let _uartBaud = 9600;
     let _uartTx = EdgeSerialPin.P1;
     let _uartRx = EdgeSerialPin.P0;
@@ -37,23 +36,6 @@ namespace pxt_jac_stack {
             // Ignore any transient read errors
         }
     } );
-
-    /*control.runInBackground(() => {
-        while (true) {
-            //if (_monitorEnable) {
-            try {
-                //let readline = serial.readLine()
-                let readline = edgeserial.readLine()
-                if (readline.length > 0)
-                    parseNMEA(readline);
-            } catch (err) {
-                // Eat the error
-                pause(1000);
-            }
-            //}
-            pause(25);
-        }
-    });*/
 
     let location = {
         datetime: {
