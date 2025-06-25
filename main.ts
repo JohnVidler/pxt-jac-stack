@@ -285,9 +285,9 @@ namespace pxt_jac_stack {
         if (input.length < 4)
             return 0;
         let d = parseInt(input.slice(0, 2));
-        let m = parseFloat(input.slice(2)) / 60;
+        let m = parseFloat(input.slice(2)) / 60.0;
         if (ns.toUpperCase() == "S")
-            return (d + m) * -1;
+            return (d + m) * -1.0;
         return (d + m);
     }
 
@@ -295,9 +295,9 @@ namespace pxt_jac_stack {
         if (input.length < 4)
             return 0;
         let d = parseInt(input.slice(0, 3));
-        let m = parseFloat(input.slice(3)) / 60;
+        let m = parseFloat(input.slice(3)) / 60.0;
         if (ew.toUpperCase() == "W")
-            return (d + m) * -1;
+            return (d + m) * -1.0;
         return (d + m);
     }
 }
