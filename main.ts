@@ -16,20 +16,22 @@ enum LocationFixType {
 //% color="#a0b4d2"
 namespace pxt_jac_stack {
 
-    let _uartBaud = 9600;
-    let _uartTx = EdgeSerialPin.P1;
-    let _uartRx = EdgeSerialPin.P0;
+    let _validMessages = 0;
 
-    let _updateHandler: () => void = () => {};
-    let _nmeaDataHandler: (x:string) => void = () => {};
+    let _uartBaud = 9600;
+    let _uartTx = EdgeSerialPin.P0;
+    let _uartRx = EdgeSerialPin.P8;
+
+    let _updateHandler: Array<() => void> = [];
+    let _nmeaDataHandler: Array<(x:string) => void> = [];
 
     // Set the default JacStack pins
-    edgeserial.redirect(_uartTx, _uartRx, _uartBaud );
+    edgeserial.redirect( _uartTx, _uartRx, _uartBaud );
     edgeserial.setRxBufferSize( 128 );
 
     edgeserial.onDataReceived(String.fromCharCode(Delimiters.NewLine), () => {
         try {
-            let readline = edgeserial.readLine();
+            let readline = edgeserial.readUntil(String.fromCharCode(Delimiters.NewLine));
             if (readline.length > 0)
                 parseNMEA(readline);
         } catch (err) {
@@ -58,7 +60,7 @@ namespace pxt_jac_stack {
     //% block="on gps location update"
     //% group="GPS Location"
     export function onLocationUpdate( handler: () => void ): void {
-        _updateHandler = handler;
+        _updateHandler.push( handler );
     }
 
     //% block="on NMEA data $data"
@@ -66,10 +68,10 @@ namespace pxt_jac_stack {
     //% draggableParameters="reporter"
     //% advanced="true"
     export function onNMEAUpdate(handler: (data:string) => void): void {
-        _nmeaDataHandler = handler;
+        _nmeaDataHandler.push( handler );
     }
-
-    //% block="set jac:stack serial pins to $tx and $rx"
+    
+    //% block="set jac:stack serial pins to tx: $tx and rx: $rx"
     //% advanced=true
     export function setSerialPins(tx: EdgeSerialPin = EdgeSerialPin.P1, rx: EdgeSerialPin = EdgeSerialPin.P0 ): void {
         _uartTx = tx;
@@ -194,14 +196,24 @@ namespace pxt_jac_stack {
         return location.datetime.year;
     }
 
+    //% block="valid messages"
+    //% advanced="true"
+    export function getValidMessages(): number {
+        return _validMessages;
+    }
+
     function parseNMEA(input: string): void {
-        _nmeaDataHandler( input );
+        _nmeaDataHandler.forEach((cb) => {
+            try { cb(input); } catch (err) { /* ... */ }
+        });
         let msg = input.split(",");
         switch (msg[0]) {
             case "$GPGGA":
             case "$GNGGA":
                 parseGPGGA(msg);
-                _updateHandler();
+                _updateHandler.forEach( (cb) => {
+                    try { cb(); } catch( err ){ /* ... */ }
+                });
                 break;
             
             case "$GPGSA":
@@ -212,7 +224,9 @@ namespace pxt_jac_stack {
             case "$GPRMC":
             case "$GNRMC":
                 parseGPRMC(msg);
-                _updateHandler();
+                _updateHandler.forEach((cb) => {
+                    try { cb(); } catch (err) { /* ... */ }
+                });
                 break;
             
             default:
@@ -242,6 +256,8 @@ namespace pxt_jac_stack {
 
         location.speedOverGround = 0;
         location.courseOverGround = 0;
+
+        _validMessages = _validMessages + 1;
     }
 
     function parseGPGGA(msg: string[]): void {
@@ -261,6 +277,8 @@ namespace pxt_jac_stack {
             location.altitude = 0;
 
         location.satellites = parseInt(msg[7]);
+
+        _validMessages = _validMessages + 1;
     }
 
     function computeLatitude(input: string, ns: string): number {
